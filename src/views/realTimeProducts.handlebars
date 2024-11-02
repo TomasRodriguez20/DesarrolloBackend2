@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productos en Tiempo Real</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <h1>Productos en Tiempo Real</h1>
+    <div id="product-list"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const productList = document.getElementById('product-list');
+
+        const renderProducts = (products) => {
+            productList.innerHTML = '';
+            products.forEach(product => {
+                const productDiv = document.createElement('div');
+                productDiv.dataset.id = product.id; 
+                productDiv.innerHTML = `
+                    <h2>${product.title}</h2>
+                    <p>${product.description}</p>
+                    <p>Precio: $${product.price}</p>
+                    <p>Stock: ${product.stock}</p>
+                    <hr>
+                `;
+                productList.appendChild(productDiv);
+            });
+        };
+
+        socket.on('newProduct', (newProduct) => {
+            const existingProducts = Array.from(productList.children).map(productDiv => {
+                return { id: productDiv.dataset.id, title: productDiv.querySelector('h2').innerText, description: productDiv.querySelector('p').innerText, price: parseFloat(productDiv.querySelector('p:nth-of-type(2)').innerText.replace('Precio: $', '')), stock: parseInt(productDiv.querySelector('p:nth-of-type(3)').innerText.replace('Stock: ', '')) };
+            });
+            existingProducts.push(newProduct);
+            renderProducts(existingProducts);
+        });
+
+        socket.on('productDeleted', (productId) => {
+            const existingProducts = Array.from(productList.children).map(productDiv => {
+                return { id: productDiv.dataset.id, title: productDiv.querySelector('h2').innerText };
+            });
+            const filteredProducts = existingProducts.filter(product => product.id !== productId);
+            renderProducts(filteredProducts);
+        });
+
+        socket.on('initialProducts', (products) => {
+            renderProducts(products);
+        });
+
+        socket.emit('getProducts');
+    </script>
+</body>
+</html>
